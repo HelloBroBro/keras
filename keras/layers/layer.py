@@ -15,6 +15,7 @@ And some more magic:
 - RNG seed tracking
 - activity regularization
 """
+
 import collections
 import inspect
 import warnings
@@ -24,9 +25,8 @@ import tree
 
 from keras import backend
 from keras import constraints
+from keras import dtype_policies
 from keras import initializers
-from keras import mixed_precision
-from keras import ops
 from keras import regularizers
 from keras import utils
 from keras.api_export import keras_export
@@ -82,12 +82,12 @@ class Layer(BackendLayer, Operation):
         trainable: Boolean, whether the layer's variables should be trainable.
         name: String name of the layer.
         dtype: The dtype of the layer's computations and weights. Can also be a
-            `keras.mixed_precision.DTypePolicy`,
+            `keras.DTypePolicy`,
             which allows the computation and
             weight dtype to differ. Defaults to `None`. `None` means to use
-            `keras.mixed_precision.dtype_policy()`,
+            `keras.config.dtype_policy()`,
             which is a `float32` policy unless set to different value
-            (via `keras.mixed_precision.set_dtype_policy()`).
+            (via `keras.config.set_dtype_policy()`).
 
     Attributes:
         name: The name of the layer (string).
@@ -97,7 +97,7 @@ class Layer(BackendLayer, Operation):
             Layers automatically cast inputs to this dtype, which causes
             the computations and output to also be in this dtype.
             When mixed precision is used with a
-            `keras.mixed_precision.DTypePolicy`, this will be different
+            `keras.DTypePolicy`, this will be different
             than `variable_dtype`.
         trainable_weights: List of variables to be included in backprop.
         non_trainable_weights: List of variables that should not be
@@ -268,7 +268,7 @@ class Layer(BackendLayer, Operation):
             )
 
         self.built = False
-        self.dtype_policy = mixed_precision.resolve_policy(dtype)
+        self.dtype_policy = dtype_policies.get(dtype)
         self.autocast = autocast
         self._input_spec = None
         self._called = False
@@ -699,25 +699,9 @@ class Layer(BackendLayer, Operation):
         #####################################
         # 1. Convert any array arguments to tensors of correct dtype.
         def maybe_convert(x):
-            if backend.is_tensor(x):
-                if (
-                    self.autocast
-                    and backend.is_float_dtype(x.dtype)
-                    and x.dtype != self.input_dtype
-                ):
-                    x = backend.cast(x, dtype=self.input_dtype)
-                return x
-            elif isinstance(x, backend.KerasTensor):
-                if (
-                    self.autocast
-                    and backend.is_float_dtype(x.dtype)
-                    and x.dtype != self.input_dtype
-                ):
-                    x.dtype = self.input_dtype
-                return x
-            elif hasattr(x, "__array__"):
-                return ops.convert_to_tensor(x, dtype=self.input_dtype)
-            return x
+            return self.dtype_policy.convert_input(
+                x, self.autocast, self.input_dtype
+            )
 
         # Used to avoid expensive `tree` operations in the most common case.
         if (

@@ -140,6 +140,7 @@ zeros_like
 
 
 """
+
 import builtins
 import re
 
@@ -3512,10 +3513,12 @@ class Matmul(Operation):
         x1_sparse = getattr(x1, "sparse", True)
         x2_sparse = getattr(x2, "sparse", True)
         output_sparse = x1_sparse and x2_sparse
-        dtype = dtypes.result_type(
-            getattr(x1, "dtype", type(x1)),
-            getattr(x2, "dtype", type(x2)),
-        )
+        x1_dtype = backend.standardize_dtype(getattr(x1, "dtype", type(x1)))
+        x2_dtype = backend.standardize_dtype(getattr(x2, "dtype", type(x2)))
+        if x1_dtype == "int8" and x2_dtype == "int8":
+            dtype = "int32"
+        else:
+            dtype = dtypes.result_type(x1_dtype, x2_dtype)
         return KerasTensor(output_shape, dtype=dtype, sparse=output_sparse)
 
 
@@ -5775,9 +5778,11 @@ class Mean(Operation):
             result_dtype = compute_dtype
         else:
             result_dtype = ori_dtype
+        sparse = getattr(x, "sparse", False)
         return KerasTensor(
             reduce_shape(x.shape, axis=self.axis, keepdims=self.keepdims),
             dtype=result_dtype,
+            sparse=sparse,
         )
 
 
