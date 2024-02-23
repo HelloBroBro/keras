@@ -413,7 +413,9 @@ PYTHON_DTYPES_MAP = {
 }
 
 
-@keras_export("keras.backend.standardize_dtype")
+@keras_export(
+    ["keras.utils.standardize_dtype", "keras.backend.standardize_dtype"]
+)
 def standardize_dtype(dtype):
     if dtype is None:
         return config.floatx()
@@ -453,8 +455,8 @@ def standardize_shape(shape):
     for e in shape:
         if e is None:
             continue
-        if config.backend() == "jax" and str(e) == "b":
-            # JAX2TF tracing represents `None` dimensions as `b`
+        if config.backend() == "jax" and "_DimExpr" in str(type(e)):
+            # JAX2TF tracing uses JAX-native dimension expressions
             continue
         if not is_int_dtype(type(e)):
             raise ValueError(
