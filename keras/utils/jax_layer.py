@@ -1,6 +1,5 @@
 import inspect
 
-import jax
 import numpy as np
 
 from keras import backend
@@ -9,6 +8,7 @@ from keras.layers.layer import Layer
 from keras.saving import serialization_lib
 from keras.utils import shape_utils
 from keras.utils import tracking
+from keras.utils.module_utils import jax
 
 
 @keras_export("keras.layers.JaxLayer")
