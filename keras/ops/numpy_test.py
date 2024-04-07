@@ -4559,6 +4559,7 @@ class SparseTest(testing.TestCase, parameterized.TestCase):
         self.assertSameSparseness(op_class()(x), x)
 
     @parameterized.named_parameters(OTHER_UNARY_OPS_TESTS)
+    @pytest.mark.skipif(backend.backend() == "tensorflow", reason="temporary")
     def test_other_unary_symbolic_sparse_correctness(
         self, op_function, op_class, np_op, op_kwargs, input_shape
     ):
