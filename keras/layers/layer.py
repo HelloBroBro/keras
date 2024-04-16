@@ -26,6 +26,7 @@ from keras import constraints
 from keras import dtype_policies
 from keras import initializers
 from keras import regularizers
+from keras import tree
 from keras import utils
 from keras.api_export import keras_export
 from keras.backend import KerasTensor
@@ -39,7 +40,6 @@ from keras.utils import python_utils
 from keras.utils import summary_utils
 from keras.utils import traceback_utils
 from keras.utils import tracking
-from keras.utils import tree
 
 if backend.backend() == "tensorflow":
     from keras.backend.tensorflow.layer import TFLayer as BackendLayer
@@ -636,14 +636,19 @@ class Layer(BackendLayer, Operation):
         return [v for v in self.weights if not v.trainable]
 
     @property
+    def metrics(self):
+        """List of all metrics."""
+        metrics = list(self._metrics)
+        for layer in self._layers:
+            metrics.extend(layer.metrics)
+        return metrics
+
+    @property
     def metrics_variables(self):
         """List of all metric variables."""
         vars = []
-        for metric in self._metrics:
+        for metric in self.metrics:
             vars.extend(metric.variables)
-        for layer in self._layers:
-            for metric in layer._metrics:
-                vars.extend(metric.variables)
         return vars
 
     def get_weights(self):
@@ -667,6 +672,17 @@ class Layer(BackendLayer, Operation):
                     f"shape {value.shape}."
                 )
             variable.assign(value)
+
+    @property
+    def dtype_policy(self):
+        return self._dtype_policy
+
+    @dtype_policy.setter
+    def dtype_policy(self, value):
+        self._dtype_policy = dtype_policies.get(value)
+        if isinstance(self._dtype_policy, dtype_policies.QuantizedDTypePolicy):
+            if self.built:
+                self.quantize(self._dtype_policy.quantization_mode)
 
     @property
     def dtype(self):
@@ -1127,9 +1143,11 @@ class Layer(BackendLayer, Operation):
                 f"Layer '{self.name}' (of type '{self.__class__.__name__}') "
                 "is not built yet."
             )
-        if mode not in ("int8",):
+        if mode not in dtype_policies.QUANTIZATION_MODES:
             raise ValueError(
-                f"`quantize` must be one of ('int8'). Received: mode={mode}"
+                "Invalid quantization mode. "
+                f"Expected one of {dtype_policies.QUANTIZATION_MODES}. "
+                f"Received: mode={mode}"
             )
         if mode == "int8" and compute_dtype == "float16":
             raise ValueError(

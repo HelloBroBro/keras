@@ -3,12 +3,12 @@ import textwrap
 
 from keras import backend
 from keras import dtype_policies
+from keras import tree
 from keras.api_export import keras_export
 from keras.backend.common.keras_tensor import any_symbolic_tensors
 from keras.ops.node import Node
 from keras.utils import python_utils
 from keras.utils import traceback_utils
-from keras.utils import tree
 from keras.utils.naming import auto_name
 
 
@@ -23,7 +23,7 @@ class Operation:
                 "cannot contain character `/`. "
                 f"Received: name={name} (of type {type(name)})"
             )
-        self.dtype_policy = dtype_policies.get(dtype)
+        self._dtype_policy = dtype_policies.get(dtype)
         self.name = name
         self._inbound_nodes = []
         self._outbound_nodes = []
@@ -36,7 +36,7 @@ class Operation:
                 call_fn = self.symbolic_call
             else:
                 if isinstance(
-                    self.dtype_policy, dtype_policies.QuantizedDTypePolicy
+                    self._dtype_policy, dtype_policies.QuantizedDTypePolicy
                 ):
                     call_fn = self.quantized_call
                 else:
@@ -50,7 +50,7 @@ class Operation:
         # Plain flow.
         if any_symbolic_tensors(args, kwargs):
             return self.symbolic_call(*args, **kwargs)
-        if isinstance(self.dtype_policy, dtype_policies.QuantizedDTypePolicy):
+        if isinstance(self._dtype_policy, dtype_policies.QuantizedDTypePolicy):
             return self.quantized_call(*args, **kwargs)
         else:
             return self.call(*args, **kwargs)
