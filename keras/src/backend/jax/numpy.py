@@ -768,9 +768,9 @@ def moveaxis(x, source, destination):
     return jnp.moveaxis(x, source=source, destination=destination)
 
 
-def nan_to_num(x):
+def nan_to_num(x, nan=0.0, posinf=None, neginf=None):
     x = convert_to_tensor(x)
-    return jnp.nan_to_num(x)
+    return jnp.nan_to_num(x, nan=nan, posinf=posinf, neginf=neginf)
 
 
 def ndim(x):
@@ -1021,6 +1021,10 @@ def vdot(x1, x2):
 
 def vstack(xs):
     return jnp.vstack(xs)
+
+
+def vectorize(pyfunc):
+    return jnp.vectorize(pyfunc)
 
 
 def where(condition, x1, x2):

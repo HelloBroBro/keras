@@ -1,4 +1,5 @@
 import builtins
+import functools
 import math
 
 import torch
@@ -994,9 +995,9 @@ def moveaxis(x, source, destination):
     return torch.moveaxis(x, source=source, destination=destination)
 
 
-def nan_to_num(x):
+def nan_to_num(x, nan=0.0, posinf=None, neginf=None):
     x = convert_to_tensor(x)
-    return torch.nan_to_num(x)
+    return torch.nan_to_num(x, nan=nan, posinf=posinf, neginf=neginf)
 
 
 def ndim(x):
@@ -1410,6 +1411,14 @@ def vdot(x1, x2):
 def vstack(xs):
     xs = [convert_to_tensor(x) for x in xs]
     return torch.vstack(xs)
+
+
+def vectorize(pyfunc):
+    @functools.wraps(pyfunc)
+    def wrapped(x):
+        return torch.vmap(pyfunc, x)
+
+    return wrapped
 
 
 def where(condition, x1, x2):

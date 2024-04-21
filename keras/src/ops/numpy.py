@@ -3955,8 +3955,19 @@ def moveaxis(x, source, destination):
 
 
 class NanToNum(Operation):
+    def __init__(self, nan=0.0, posinf=None, neginf=None):
+        super().__init__()
+        self.nan = nan
+        self.posinf = posinf
+        self.neginf = neginf
+
     def call(self, x):
-        return backend.numpy.nan_to_num(x)
+        return backend.numpy.nan_to_num(
+            x, nan=self.nan, posinf=self.posinf, neginf=self.neginf
+        )
+
+    def compute_output_spec(self, x):
+        return KerasTensor(x.shape, dtype=x.dtype)
 
 
 @keras_export(
@@ -3965,16 +3976,23 @@ class NanToNum(Operation):
         "keras.ops.numpy.nan_to_num",
     ]
 )
-def nan_to_num(x):
+def nan_to_num(x, nan=0.0, posinf=None, neginf=None):
     """Replace NaN with zero and infinity with large finite numbers.
 
     Args:
         x: Input data.
+        nan: Optional float or int. Value to replace `NaN` entries with.
+        posinf: Optional float or int.
+            Value to replace positive infinity with.
+        neginf: Optional float or int.
+            Value to replace negative infinity with.
 
     Returns:
         `x`, with non-finite values replaced.
     """
-    return backend.numpy.nan_to_num(x)
+    if any_symbolic_tensors((x,)):
+        return NanToNum(nan=nan, posinf=posinf, neginf=neginf).symbolic_call(x)
+    return backend.numpy.nan_to_num(x, nan=nan, posinf=posinf, neginf=neginf)
 
 
 class Ndim(Operation):
@@ -5395,6 +5413,35 @@ def vdot(x1, x2):
     if any_symbolic_tensors((x1, x2)):
         return Vdot().symbolic_call(x1, x2)
     return backend.numpy.vdot(x1, x2)
+
+
+@keras_export(["keras.ops.vectorize", "keras.ops.numpy.vectorize"])
+def vectorize(pyfunc):
+    """Turn a function into a vectorized function.
+
+    Example:
+
+    ```python
+    def myfunc(a, b):
+        return a + b
+
+    vfunc = np.vectorize(myfunc)
+    y = vfunc([1, 2, 3, 4], 2)  # Returns Tensor([3, 4, 5, 6])
+    ```
+
+    Args:
+        pyfunc: Callable of a single tensor argument.
+
+    Returns:
+        A new function that applies `pyfunc` to every element
+        of its input along axis 0 (the batch axis).
+    """
+    if not callable(pyfunc):
+        raise ValueError(
+            "Expected argument `pyfunc` to be a callable. "
+            f"Received: pyfunc={pyfunc}"
+        )
+    return backend.numpy.vectorize(pyfunc)
 
 
 class Vstack(Operation):

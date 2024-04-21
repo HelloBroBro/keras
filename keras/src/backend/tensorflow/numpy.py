@@ -1531,7 +1531,7 @@ def moveaxis(x, source, destination):
     return tf.transpose(x, perm)
 
 
-def nan_to_num(x):
+def nan_to_num(x, nan=0.0, posinf=None, neginf=None):
     x = convert_to_tensor(x)
 
     dtype = x.dtype
@@ -1539,14 +1539,18 @@ def nan_to_num(x):
     if dtype_as_dtype.is_integer or not dtype_as_dtype.is_numeric:
         return x
 
-    # Replace NaN with 0
-    x = tf.where(tf.math.is_nan(x), tf.constant(0, dtype), x)
+    # Replace NaN with `nan`
+    x = tf.where(tf.math.is_nan(x), tf.constant(nan, dtype), x)
 
-    # Replace positive infinity with dtype.max
-    x = tf.where(tf.math.is_inf(x) & (x > 0), tf.constant(dtype.max, dtype), x)
+    # Replace positive infinity with `posinf` or `dtype.max`
+    if posinf is None:
+        posinf = dtype.max
+    x = tf.where(tf.math.is_inf(x) & (x > 0), tf.constant(posinf, dtype), x)
 
-    # Replace negative infinity with dtype.min
-    x = tf.where(tf.math.is_inf(x) & (x < 0), tf.constant(dtype.min, dtype), x)
+    # Replace negative infinity with `neginf` or `dtype.min`
+    if neginf is None:
+        neginf = dtype.min
+    x = tf.where(tf.math.is_inf(x) & (x < 0), tf.constant(neginf, dtype), x)
 
     return x
 
@@ -2150,6 +2154,14 @@ def vstack(xs):
         dtype = dtypes.result_type(*dtype_set)
         xs = tree.map_structure(lambda x: convert_to_tensor(x, dtype), xs)
     return tf.concat(xs, axis=0)
+
+
+def vectorize(pyfunc):
+    @functools.wraps(pyfunc)
+    def wrapped(x):
+        return tf.vectorized_map(pyfunc, x)
+
+    return wrapped
 
 
 def where(condition, x1, x2):
