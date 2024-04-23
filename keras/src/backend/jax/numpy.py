@@ -1023,8 +1023,10 @@ def vstack(xs):
     return jnp.vstack(xs)
 
 
-def vectorize(pyfunc):
-    return jnp.vectorize(pyfunc)
+def vectorize(pyfunc, *, excluded=None, signature=None):
+    if excluded is None:
+        excluded = set()
+    return jnp.vectorize(pyfunc, excluded=excluded, signature=signature)
 
 
 def where(condition, x1, x2):
