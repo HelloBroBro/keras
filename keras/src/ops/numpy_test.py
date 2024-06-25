@@ -433,6 +433,7 @@ class NumpyTwoInputOpsStaticShapeTest(testing.TestCase):
             y = KerasTensor((2, 3, 4))
             knp.matmul(x, y)
 
+    @pytest.mark.skipif(testing.tensorflow_uses_gpu(), reason="Segfault")
     def test_matmul_sparse(self):
         x = KerasTensor((2, 3), sparse=True)
         y = KerasTensor((3, 2))
@@ -1317,7 +1318,11 @@ class NumpyOneInputOpsDynamicShapeTest(testing.TestCase):
 
     def test_nonzero(self):
         x = KerasTensor((None, 5, 6))
-        self.assertEqual(knp.nonzero(x).shape, (None, None, None))
+        result = knp.nonzero(x)
+        self.assertLen(result, 3)
+        self.assertEqual(result[0].shape, (None,))
+        self.assertEqual(result[1].shape, (None,))
+        self.assertEqual(result[2].shape, (None,))
 
     def test_ones_like(self):
         x = KerasTensor((None, 3))
@@ -3790,7 +3795,7 @@ class NumpyOneInputOpsCorrectnessTest(testing.TestCase, parameterized.TestCase):
         self.assertEqual(knp.Ndim()(x), np.ndim(x))
 
     def test_nonzero(self):
-        x = np.array([[1, 2, 3], [3, 2, 1]])
+        x = np.array([[0, 0, 3], [3, 0, 0]])
         self.assertAllClose(knp.nonzero(x), np.nonzero(x))
         self.assertAllClose(knp.Nonzero()(x), np.nonzero(x))
 
@@ -7119,8 +7124,8 @@ class NumpyDtypeTest(testing.TestCase, parameterized.TestCase):
     def test_nonzero(self, dtype):
         import jax.numpy as jnp
 
-        x = knp.ones((1,), dtype=dtype)
-        x_jax = jnp.ones((1,), dtype=dtype)
+        x = knp.zeros((1,), dtype=dtype)
+        x_jax = jnp.zeros((1,), dtype=dtype)
         expected_dtype = standardize_dtype(jnp.nonzero(x_jax)[0].dtype)
 
         self.assertEqual(
