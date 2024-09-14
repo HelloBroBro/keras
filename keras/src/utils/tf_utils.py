@@ -40,6 +40,10 @@ def ensure_tensor(inputs, dtype=None):
     return inputs
 
 
+def is_ragged_tensor(x):
+    return "ragged_tensor.RaggedTensor" in str(type(x))
+
+
 def sparse_bincount(inputs, depth, binary_output, dtype, count_weights=None):
     """Apply binary or count encoding to an input and return a sparse tensor."""
     result = tf.sparse.bincount(
