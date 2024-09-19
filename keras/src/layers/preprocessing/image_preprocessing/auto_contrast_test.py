@@ -1,13 +1,12 @@
 import numpy as np
 import pytest
-from absl.testing import parameterized
 
 from keras.src import layers
 from keras.src import ops
 from keras.src import testing
 
 
-class AutoContrastTest(testing.TestCase, parameterized.TestCase):
+class AutoContrastTest(testing.TestCase):
     @pytest.mark.requires_trainable_backend
     def test_layer(self):
         self.run_layer_test(
@@ -90,6 +89,6 @@ class AutoContrastTest(testing.TestCase, parameterized.TestCase):
 
         layer = layers.AutoContrast(value_range=(0, 1))
         ys = layer(img)
-
-        self.assertTrue(np.any(ops.convert_to_numpy(ys[0]) == 0.0))
-        self.assertTrue(np.any(ops.convert_to_numpy(ys[0]) == 1.0))
+        self.assertAllClose(
+            ops.convert_to_numpy(ys[0]), np.array([[[0.0]], [[1]]])
+        )
