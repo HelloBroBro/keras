@@ -36,6 +36,10 @@ def is_ipython_notebook():
 class KerasFileEditor:
     """Utility to inspect, edit, and resave Keras weights files.
 
+    You will find this class useful when adapting
+    an old saved weights file after having made
+    architecture changes to a model.
+
     Args:
         filepath: The path to a local file to inspect and edit.
 
@@ -43,12 +47,16 @@ class KerasFileEditor:
 
     ```python
     editor = KerasFileEditor("my_model.weights.h5")
+
     # Displays current contents
     editor.summary()
+
     # Remove the weights of an existing layer
     editor.delete_object("layers/dense_2")
+
     # Add the weights of a new layer
     editor.add_object("layers/einsum_dense", weights={"0": ..., "1": ...})
+
     # Save the weights of the edited model
     editor.resave_weights("edited_model.weights.h5")
     ```
@@ -90,6 +98,7 @@ class KerasFileEditor:
         weights_dict, object_metadata = self._extract_weights_from_store(
             weights_store.h5_file
         )
+        weights_store.close()
         self.weights_dict = weights_dict
         self.object_metadata = object_metadata  # {path: object_name}
         self.console.print(self._generate_filepath_info(rich_style=True))
@@ -129,13 +138,18 @@ class KerasFileEditor:
             ref_name,
             error_count,
             match_count,
+            checked_paths,
         ):
             base_inner_path = inner_path
             for ref_key, ref_val in ref_spec.items():
                 inner_path = base_inner_path + "/" + ref_key
+                if inner_path in checked_paths:
+                    continue
+
                 if ref_key not in target:
+                    error_count += 1
+                    checked_paths.add(inner_path)
                     if isinstance(ref_val, dict):
-                        error_count += 1
                         self.console.print(
                             f"[color(160)]...Object [bold]{inner_path}[/] "
                             f"present in {ref_name}, "
@@ -160,17 +174,19 @@ class KerasFileEditor:
                         ref_name,
                         error_count=error_count,
                         match_count=match_count,
+                        checked_paths=checked_paths,
                     )
                     error_count += _error_count
                     match_count += _match_count
                 else:
                     if target[ref_key].shape != ref_val.shape:
                         error_count += 1
+                        checked_paths.add(inner_path)
                         self.console.print(
                             f"[color(160)]...Weight shape mismatch "
                             f"for [bold]{inner_path}[/][/]\n"
                             f"    In {ref_name}: "
-                            f"shape={tuple(ref_val[0])}\n"
+                            f"shape={ref_val.shape}\n"
                             f"    In {target_name}: "
                             f"shape={target[ref_key].shape}"
                         )
@@ -178,6 +194,7 @@ class KerasFileEditor:
                         match_count += 1
             return error_count, match_count
 
+        checked_paths = set()
         error_count, match_count = _compare(
             self.weights_dict,
             ref_spec,
@@ -186,6 +203,7 @@ class KerasFileEditor:
             ref_name="reference model",
             error_count=0,
             match_count=0,
+            checked_paths=checked_paths,
         )
         _error_count, _ = _compare(
             ref_spec,
@@ -195,6 +213,7 @@ class KerasFileEditor:
             ref_name="saved file",
             error_count=0,
             match_count=0,
+            checked_paths=checked_paths,
         )
         error_count += _error_count
         self.console.print("─────────────────────")
@@ -457,7 +476,7 @@ class KerasFileEditor:
                         value, metadata=metadata, inner_path=inner_path
                     )
             else:
-                result[key] = value
+                result[key] = value[:]
         return result, metadata
 
     def _generate_filepath_info(self, rich_style=False):
