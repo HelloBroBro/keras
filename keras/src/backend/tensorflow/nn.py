@@ -42,6 +42,14 @@ def softsign(x):
     return tf.nn.softsign(x)
 
 
+def soft_shrink(x, threshold=0.5):
+    return tf.where(
+        x > threshold,
+        x - threshold,
+        tf.where(x < -threshold, x + threshold, tf.zeros_like(x)),
+    )
+
+
 def silu(x):
     return tf.nn.silu(x)
 
@@ -999,11 +1007,13 @@ def dot_product_attention(
     mask=None,
     scale=None,
     is_causal=False,
-    flash_attention=False,
+    flash_attention=None,
 ):
+    if flash_attention is None:
+        flash_attention = False
     if flash_attention:
         raise ValueError(
-            "Flash attention is not supported yet in TensorFlow backend."
+            "Flash attention is not supported in tensorflow backend."
         )
 
     # Ref: jax.nn.dot_product_attention

@@ -50,6 +50,18 @@ def softsign(x):
     return x / (np.array(1.0, x.dtype) + np.abs(x))
 
 
+def soft_shrink(x, threshold=0.5):
+    return np.where(
+        x > threshold,
+        np.array(x - threshold, dtype=x.dtype),
+        np.where(
+            x < -threshold,
+            np.array(x + threshold, dtype=x.dtype),
+            np.array(0.0, dtype=x.dtype),
+        ),
+    )
+
+
 def silu(x):
     x = convert_to_tensor(x)
     return x * sigmoid(x)
@@ -1080,10 +1092,13 @@ def dot_product_attention(
     mask=None,
     scale=None,
     is_causal=False,
-    flash_attention=False,
+    flash_attention=None,
 ):
+    if flash_attention is None:
+        flash_attention = False
     if flash_attention:
-        raise ValueError("Flash attention is not implemented in NumPy.")
+        raise ValueError("Flash attention is not supported in numpy backend.")
+
     # Ref: jax.nn.dot_product_attention
     # https://github.com/jax-ml/jax/blob/jax-v0.4.32/jax/_src/nn/functions.py#L828
     # Not support `query_seq_lengths` and `key_value_seq_lengths` args
