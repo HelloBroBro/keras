@@ -67,6 +67,11 @@ def silu(x):
     return jnn.silu(x)
 
 
+def squareplus(x, b=4):
+    x = convert_to_tensor(x)
+    return jnn.squareplus(x, b=b)
+
+
 def log_sigmoid(x):
     x = convert_to_tensor(x)
     return jnn.log_sigmoid(x)
@@ -989,6 +994,9 @@ def _can_use_flash_attention(query, key, value, bias, raise_error=False):
             check_compute_capability,
         )
         from jax._src.cudnn.fused_attention_stablehlo import check_cudnn_version
+        from jax._src.cudnn.fused_attention_stablehlo import (
+            check_is_flash_attention,
+        )
         from jax._src.cudnn.fused_attention_stablehlo import check_layout
         from jax.nn import dot_product_attention as dot_product_attention
     except ImportError:
@@ -1003,7 +1011,7 @@ def _can_use_flash_attention(query, key, value, bias, raise_error=False):
     try:
         # Check if cuDNN is installed and raise RuntimeError if cuDNN is not
         # detected
-        check_cudnn_version()
+        cudnn_version = check_cudnn_version()
         # Only support at least Ampere
         if not check_compute_capability("8.0"):
             raise RuntimeError("Require at least Ampere arch to run")
@@ -1016,6 +1024,14 @@ def _can_use_flash_attention(query, key, value, bias, raise_error=False):
             q_seqlen=None,
             kv_seqlen=None,
             layout=_normalize_layout("BTNH"),
+        )
+        check_is_flash_attention(
+            query,
+            key,
+            _normalize_layout("BTNH"),
+            cudnn_version,
+            bias is not None,
+            is_training=False,
         )
         return True
     except:
